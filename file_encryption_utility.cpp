@@ -7,12 +7,17 @@
 #include <commdlg.h>
 #include <fstream>
 #include <vector>
+#include <wincrypt.h>
 
 #define BUTTON_ID 1
 
 LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+
 void showOpenFileDialog(HWND hwnd);
+
 std::string ConvertWideStringToNarrowString(const std::wstring &widestring);
+
+bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData);
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
@@ -150,10 +155,49 @@ void showOpenFileDialog(HWND hwnd)
         }
     }
 }
+
 std::string ConvertWideStringToNarrowString(const std::wstring &widestring)
 {
     int bufferSize = WideCharToMultiByte(CP_UTF8, 0, widestring.c_str(), -1, NULL, 0, NULL, NULL);
     std::vector<char> buffer(bufferSize);
     WideCharToMultiByte(CP_UTF8, 0, widestring.c_str(), -1, buffer.data(), bufferSize, NULL, NULL);
     return std::string(buffer.data());
+}
+
+bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData)
+{
+    HCRYPTPROV hProv = NULL;
+    HCRYPTKEY hKey = NULL;
+    HCRYPTHASH hHash = NULL;
+
+    if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT))
+    {
+        std::cerr << "CryptAcquiredContext Failed." << std::endl;
+        return false;
+    }
+
+    if (!CryptCreateHash(hProv, CALG_SHA, 0, 0, &hHash))
+    {
+        std::cerr << "CryptCreateHash failed. " << std::endl;
+        CryptReleaseContext(hProv, 0);
+        return false;
+    }
+
+    if (!CryptDeriveKey(hProv, CALG_SHA, hHash, 0, &hKey))
+    {
+        std::cerr << "CryptDeriveKey failed. " << std::endl;
+        return false;
+    }
+
+    encryptedData = data;
+    DWORD dataLen = encryptedData.size();
+
+    if (!CryptEncrypt(hKey, NULL, TRUE, 0, encryptedData.data(), &dataLen, encryptedData.size()))
+    {
+        std::cerr << "CryptEncrypt failed. " << std::endl;
+        CryptDestroyKey(hKey);
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
+        return false;
+    }
 }
