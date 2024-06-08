@@ -11,14 +11,15 @@
 
 #define BUTTON_ID 1
 
+// Function Prototype's
 LRESULT CALLBACK WinProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
-
+std::string ConvertWideStringToNarrowString(const std::wstring &widestring);
+bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData);
+void ReadFileToVector(const std::string &filename, std::vector<BYTE> &buffer);
+void WriteVectorToFile(const std::string &filename, std::vector<BYTE> &buffer);
 void showOpenFileDialog(HWND hwnd);
 
-std::string ConvertWideStringToNarrowString(const std::wstring &widestring);
-
-bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData);
-
+// WinAPI Initialization
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     const wchar_t *CLASS_NAME = L"File Encrypt Window Class";
@@ -200,4 +201,16 @@ bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData
         CryptReleaseContext(hProv, 0);
         return false;
     }
+}
+
+void ReadFileToVector(const std::string &filename, std::vector<BYTE> &buffer)
+{
+    std::ifstream file(filename, std::ios::binary);
+    buffer = std::vector<BYTE>(std::istreambuf_iterator<char>(file), {});
+}
+
+void WriteVectorToFile(const std::string &filename, std::vector<BYTE> &buffer)
+{
+    std::ofstream file(filename, std::ios::binary);
+    file.write(reinterpret_cast<const char *>(buffer.data()), buffer.size());
 }
