@@ -11,3 +11,11 @@ I chose to use the Windows API (WinAPI) for this encryption tool to gain a deepe
 ## Cryptography Implementation with Windows CryptoAPI
 
 For the cryptographic functions in this tool, I am employing the Windows Cryptography API (CryptoAPI), which is accessible via the wincrypt.h header. The CryptoAPI provides a set of functions that allow for secure encryption and decryption of data, leveraging the robust and well-tested security infrastructure that is built into the Windows operating system.
+
+## How to Use ??
+
+- Execute the program by running `run.bat`
+- Select location of file to be encrypted
+- Enter a secret key
+- Click Encrypt
+- To Decrypt a file, select the file location and enter the key used to encrypt the file and click Decrypt
