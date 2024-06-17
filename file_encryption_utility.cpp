@@ -98,7 +98,7 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
 void showOpenFileDialog(HWND hwnd)
 {
     OPENFILENAME ofn;
-    wchar_t szFile[260];
+    wchar_t szFile[260] = {0};
 
     // // Initialise OPENFILENAME
     ZeroMemory(&ofn, sizeof(ofn));
@@ -117,6 +117,7 @@ void showOpenFileDialog(HWND hwnd)
     if (GetOpenFileName(&ofn) == TRUE)
     {
         std::string fileName = "";
+        std::wstring filePath = ofn.lpstrFile;
 
         int length = wcslen(ofn.lpstrFile);
 
@@ -129,22 +130,24 @@ void showOpenFileDialog(HWND hwnd)
         std::wcout
             << L"File Location : " << ofn.lpstrFile << std::endl;
 
-        std::string narrowFilePath = ConvertWideStringToNarrowString(ofn.lpstrFile);
+        std::string narrowFilePath(filePath.begin(), filePath.end());
 
-        std::ifstream file(narrowFilePath);
-        if (file)
+        std::vector<BYTE> data;
+        ReadFileToVector(narrowFilePath, data);
+
+        // Encrypt the data
+        std::vector<BYTE> encryptedData;
+        if (EncryptData(data, encryptedData))
         {
-            std::string line;
-            std::cout << "File Content: " << std::endl;
-            while (std::getline(file, line))
-            {
-                std::cout << line << std::endl;
-            }
-            file.close();
+            std::string encryptedFilePath = narrowFilePath + ".enc";
+            WriteVectorToFile(encryptedFilePath, encryptedData);
+
+            std::wcout << L"Selected File: " << filePath << std::endl;
+            std::cout << "Encrypted File: " << encryptedFilePath << std::endl;
         }
         else
         {
-            std::wcerr << L"Failed to open the file. " << std::endl;
+            std::cerr << "Encryption Failed. " << std::endl;
         }
     }
     else
@@ -167,9 +170,9 @@ std::string ConvertWideStringToNarrowString(const std::wstring &widestring)
 
 bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData)
 {
-    HCRYPTPROV hProv = NULL;
-    HCRYPTKEY hKey = NULL;
-    HCRYPTHASH hHash = NULL;
+    HCRYPTPROV hProv = 0;
+    HCRYPTKEY hKey = 0;
+    HCRYPTHASH hHash = 0;
 
     if (!CryptAcquireContext(&hProv, NULL, NULL, PROV_RSA_AES, CRYPT_VERIFYCONTEXT))
     {
@@ -184,9 +187,18 @@ bool EncryptData(const std::vector<BYTE> &data, std::vector<BYTE> &encryptedData
         return false;
     }
 
-    if (!CryptDeriveKey(hProv, CALG_SHA, hHash, 0, &hKey))
+    // Using PASSWORD to hash data
+
+    const BYTE *password = reinterpret_cast<const BYTE *>("password");
+    DWORD passwordLen = strlen("password");
+
+    // if(!CryptHashData(hHash, password, passwordLen,0)){}
+
+    if (!CryptDeriveKey(hProv, CALG_AES_256, hHash, 0, &hKey))
     {
         std::cerr << "CryptDeriveKey failed. " << std::endl;
+        CryptDestroyHash(hHash);
+        CryptReleaseContext(hProv, 0);
         return false;
     }
 
